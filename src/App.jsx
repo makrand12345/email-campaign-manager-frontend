@@ -7,8 +7,9 @@ function App() {
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    console.log("Fetching templates from http://127.0.0.1:8000...");
-    fetch('http://127.0.0.1:8000/api/v1/campaign/templates')
+    console.log("Fetching templates from https://bulk-email-sender-backend-zupq.onrender.com");
+    fetch('https://bulk-email-sender-backend-zupq.onrender.com/api/v1/campaign/templates')
+
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
@@ -39,7 +40,8 @@ function App() {
     formData.append('csv_file', file);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/campaign/send-bulk', {
+      const res = await fetch('https://bulk-email-sender-backend-zupq.onrender.com/api/v1/campaign/send-bulk', {
+
         method: 'POST',
         body: formData
       });
