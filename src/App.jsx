@@ -1,116 +1,224 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from "react";
+
+const API = "https://bulk-email-sender-backend-zupq.onrender.com/api/v1/campaign";
 
 function App() {
-  const [templates, setTemplates] = useState([]);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [form, setForm] = useState({
+    company_name: "",
+    header_title: "",
+    subject: "",
+    title: "",
+    body: "",
+    footer: ""
+  });
+
   const [file, setFile] = useState(null);
-  const [status, setStatus] = useState('');
+  const [previewHtml, setPreviewHtml] = useState("");
+  const [status, setStatus] = useState("");
 
-  useEffect(() => {
-    console.log("Fetching templates from https://bulk-email-sender-backend-zupq.onrender.com");
-    fetch('https://bulk-email-sender-backend-zupq.onrender.com/api/v1/campaign/templates')
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        console.log("Templates loaded:", data);
-        setTemplates(data);
-      })
-      .catch(err => {
-        console.error("❌ DB Connection Error:", err);
-        setStatus('Failed to load templates. Is backend running?');
-      });
-  }, []);
+  const handlePreview = async () => {
+    const fd = new FormData();
+    Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+
+    const res = await fetch(`${API}/preview`, { method: "POST", body: fd });
+    const data = await res.json();
+    setPreviewHtml(data.html);
+  };
 
   const handleSend = async () => {
-    if (!selectedTemplate || !file) {
-      alert("Please select a hiring template and upload a candidate CSV.");
-      return;
-    }
-    
-    setStatus('📡 Sending request to backend...');
-    console.log("🚀 Dispatching batch for template:", selectedTemplate.name);
+    if (!file) return alert("Upload CSV file first");
 
-    const formData = new FormData();
-    formData.append('name', selectedTemplate.name);
-    formData.append('subject', selectedTemplate.subject);
-    formData.append('html_content', selectedTemplate.content);
-    formData.append('csv_file', file);
+    setStatus("Sending campaign...");
 
-    try {
-      const res = await fetch('https://bulk-email-sender-backend-zupq.onrender.com/api/v1/campaign/send-bulk', {
+    const fd = new FormData();
+    Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+    fd.append("csv_file", file);
 
-        method: 'POST',
-        body: formData
-      });
-      
-      const result = await res.json();
-      console.log("📩 Backend Response Object:", result);
-
-      if (res.ok) {
-        setStatus('✅ ' + result.message);
-      } else {
-        setStatus('❌ Server Error: ' + res.status);
-        console.error("Backend Error Details:", result);
-      }
-    } catch (e) {
-      console.error("🔥 Network/Fetch Error:", e);
-      setStatus('🔥 Server unreachable. Check terminal for crashes.');
-    }
+    const res = await fetch(`${API}/send-bulk`, { method: "POST", body: fd });
+    const data = await res.json();
+    setStatus(data.message);
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: 'auto', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ textAlign: 'center', color: '#2c3e50' }}>Hiring Portal: Email Manager</h1>
-      <hr />
-      
-      <h3>1. Select Hiring Stage Template</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-        {templates.map(t => (
-          <div 
-            key={t.id} 
-            onClick={() => {
-              console.log("Selected:", t.name);
-              setSelectedTemplate(t);
-            }}
-            style={{ 
-              padding: '20px', border: '2px solid', cursor: 'pointer', transition: '0.3s',
-              borderColor: selectedTemplate?.id === t.id ? '#007bff' : '#ecf0f1',
-              borderRadius: '10px', background: selectedTemplate?.id === t.id ? '#f0f7ff' : '#fff'
-            }}
-          >
-            <strong style={{ display: 'block', fontSize: '16px' }}>{t.name}</strong>
-            <small style={{ color: '#7f8c8d' }}>Sub: {t.subject}</small>
+    <div style={page}>
+      <h1 style={title}>Email Campaign Builder</h1>
+
+      <div style={layout}>
+        {/* PREVIEW */}
+        <div style={card}>
+          <div style={cardHeader}>Email Preview</div>
+          <iframe title="preview" style={iframe} srcDoc={previewHtml} />
+        </div>
+
+        {/* FORM */}
+        <div style={card}>
+          <div style={cardHeader}>Campaign Details</div>
+
+          {/* INNER CONTAINER (IMPORTANT FIX) */}
+          <div style={formContainer}>
+            <div style={formGrid}>
+              <Field label="Company Name" name="company_name" onChange={handleChange} />
+              <Field label="Header Title" name="header_title" onChange={handleChange} />
+              <Field label="Email Subject" name="subject" onChange={handleChange} />
+              <Field label="Email Title" name="title" onChange={handleChange} />
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>Email Body</label>
+                <textarea
+                  name="body"
+                  placeholder="Use {{name}}, {{role}}, {{company}}"
+                  rows={6}
+                  style={textarea}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <Field label="Footer Text" name="footer" onChange={handleChange} />
+            </div>
+
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setFile(e.target.files[0])}
+              style={fileInput}
+            />
+
+            <div style={actions}>
+              <button style={btnSecondary} onClick={handlePreview}>
+                Preview
+              </button>
+              <button style={btnPrimary} onClick={handleSend}>
+                Send Campaign
+              </button>
+            </div>
+
+            {status && <p style={statusText}>{status}</p>}
           </div>
-        ))}
+        </div>
       </div>
-
-      <div style={{ marginTop: '30px', padding: '20px', background: '#fdfefe', border: '1px solid #dcdde1', borderRadius: '10px' }}>
-        <h3>2. Mailer Content Preview</h3>
-        {selectedTemplate ? (
-          <div 
-            dangerouslySetInnerHTML={{ __html: selectedTemplate.content }} 
-            style={{ padding: '20px', background: '#fff', border: '1px dashed #3498db', minHeight: '100px' }} 
-          />
-        ) : <p style={{ color: '#95a5a6' }}>Click a template above to preview.</p>}
-      </div>
-
-      <div style={{ marginTop: '30px' }}>
-        <h3>3. Upload Candidate Data (.csv)</h3>
-        <input type="file" accept=".csv" onChange={(e) => {
-          console.log("File selected:", e.target.files[0].name);
-          setFile(e.target.files[0]);
-        }} style={{ padding: '10px', background: '#eee', width: '100%', borderRadius: '5px' }} />
-      </div>
-
-      <button onClick={handleSend} style={{ marginTop: '40px', width: '100%', padding: '18px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
-        Send Bulk Hiring Emails Now
-      </button>
-      {status && <div style={{ marginTop: '20px', textAlign: 'center', fontWeight: 'bold', color: '#2980b9' }}>{status}</div>}
     </div>
   );
 }
+
+const Field = ({ label, name, onChange }) => (
+  <div style={{ width: "100%" }}>
+    <label style={labelStyle}>{label}</label>
+    <input name={name} onChange={onChange} style={input} />
+  </div>
+);
+
+/* ================= STYLES ================= */
+
+const page = {
+  padding: 40,
+  background: "#f3f7f4",
+  minHeight: "100vh",
+  fontFamily: "Inter, Arial, sans-serif",
+  boxSizing: "border-box"
+};
+
+const title = {
+  textAlign: "center",
+  marginBottom: 30,
+  color: "#1b5e20"
+};
+
+const layout = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 30,
+  maxWidth: 1200,
+  margin: "0 auto"
+};
+
+const card = {
+  background: "#ffffff",
+  borderRadius: 14,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+  padding: 20,
+  boxSizing: "border-box"
+};
+
+const cardHeader = {
+  fontWeight: 600,
+  marginBottom: 16,
+  color: "#1b5e20"
+};
+
+const formContainer = {
+  maxWidth: "100%",
+  boxSizing: "border-box"
+};
+
+const formGrid = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 16
+};
+
+const labelStyle = {
+  fontSize: 13,
+  color: "#355e3b",
+  marginBottom: 4,
+  display: "block"
+};
+
+const input = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid #cfd8cf",
+  outline: "none",
+  boxSizing: "border-box"
+};
+
+const textarea = {
+  ...input,
+  resize: "vertical"
+};
+
+const fileInput = {
+  marginTop: 18,
+  width: "100%",
+  boxSizing: "border-box"
+};
+
+const iframe = {
+  width: "100%",
+  height: 520,
+  border: "1px solid #e0e0e0",
+  borderRadius: 10
+};
+
+const actions = {
+  display: "flex",
+  gap: 12,
+  marginTop: 20
+};
+
+const btnPrimary = {
+  flex: 1,
+  padding: 14,
+  background: "#1b5e20",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  cursor: "pointer"
+};
+
+const btnSecondary = {
+  ...btnPrimary,
+  background: "#6b8f71"
+};
+
+const statusText = {
+  marginTop: 14,
+  textAlign: "center",
+  color: "#1b5e20",
+  fontWeight: 500
+};
 
 export default App;
