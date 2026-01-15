@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const API = "https://bulk-email-sender-backend-zupq.onrender.com/api/v1/campaign";
 
@@ -15,6 +15,13 @@ function App() {
   const [file, setFile] = useState(null);
   const [previewHtml, setPreviewHtml] = useState("");
   const [status, setStatus] = useState("");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -46,18 +53,16 @@ function App() {
     <div style={page}>
       <h1 style={title}>Email Campaign Builder</h1>
 
-      <div style={layout}>
-        {/* PREVIEW */}
-        <div style={card}>
-          <div style={cardHeader}>Email Preview</div>
-          <iframe title="preview" style={iframe} srcDoc={previewHtml} />
-        </div>
-
+      <div
+        style={{
+          ...layout,
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr"
+        }}
+      >
         {/* FORM */}
-        <div style={card}>
+        <div style={{ ...card, order: isMobile ? 1 : 2 }}>
           <div style={cardHeader}>Campaign Details</div>
 
-          {/* INNER CONTAINER (IMPORTANT FIX) */}
           <div style={formContainer}>
             <div style={formGrid}>
               <Field label="Company Name" name="company_name" onChange={handleChange} />
@@ -69,8 +74,8 @@ function App() {
                 <label style={labelStyle}>Email Body</label>
                 <textarea
                   name="body"
+                  rows={5}
                   placeholder="Use {{name}}, {{role}}, {{company}}"
-                  rows={6}
                   style={textarea}
                   onChange={handleChange}
                 />
@@ -98,13 +103,26 @@ function App() {
             {status && <p style={statusText}>{status}</p>}
           </div>
         </div>
+
+        {/* PREVIEW */}
+        <div style={{ ...card, order: isMobile ? 2 : 1 }}>
+          <div style={cardHeader}>Email Preview</div>
+          <iframe
+            title="preview"
+            style={{
+              ...iframe,
+              height: isMobile ? 360 : 520
+            }}
+            srcDoc={previewHtml}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
 const Field = ({ label, name, onChange }) => (
-  <div style={{ width: "100%" }}>
+  <div>
     <label style={labelStyle}>{label}</label>
     <input name={name} onChange={onChange} style={input} />
   </div>
@@ -113,7 +131,7 @@ const Field = ({ label, name, onChange }) => (
 /* ================= STYLES ================= */
 
 const page = {
-  padding: 40,
+  padding: 24,
   background: "#f3f7f4",
   minHeight: "100vh",
   fontFamily: "Inter, Arial, sans-serif",
@@ -128,8 +146,7 @@ const title = {
 
 const layout = {
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 30,
+  gap: 24,
   maxWidth: 1200,
   margin: "0 auto"
 };
@@ -149,14 +166,14 @@ const cardHeader = {
 };
 
 const formContainer = {
-  maxWidth: "100%",
+  width: "100%",
   boxSizing: "border-box"
 };
 
 const formGrid = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
-  gap: 16
+  gap: 14
 };
 
 const labelStyle = {
@@ -181,14 +198,12 @@ const textarea = {
 };
 
 const fileInput = {
-  marginTop: 18,
-  width: "100%",
-  boxSizing: "border-box"
+  marginTop: 16,
+  width: "100%"
 };
 
 const iframe = {
   width: "100%",
-  height: 520,
   border: "1px solid #e0e0e0",
   borderRadius: 10
 };
